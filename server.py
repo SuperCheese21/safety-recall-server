@@ -1,9 +1,14 @@
+import json
 import logging
 from time import sleep
 
 import firebase_admin
 from firebase_admin import credentials, firestore, messaging
 from firebase_admin.messaging import ApiCallError
+import requests
+
+OAUTH_ENDPOINT = 'https://identity.fortellis.io/oauth2/aus1p1ixy7YL8cMq02p7/v1/token'
+RECALL_ENDPOINT = 'https://api.fortellis.io/v1/safety-recalls/'
 
 
 def main():
@@ -27,21 +32,36 @@ def main():
         priority='high'
     )
 
-    # set test notification content
-    notification = messaging.Notification(
-        title='Test',
-        body='This is a test notification'
-    )
-
     # infinite loop that sends messages every 5 minutes
     while True:
-        send_messages(android_config, collection, notification)
+        send_messages(android_config, collection)
         sleep(300)
 
 
-def send_messages(android_config, collection, notification):
-    logging.info("Sending messages...")
+def send_messages(android_config, collection):
     sent_messages = []
+
+    logging.info("Requesting OAuth token...")
+    with open("./auth.json", "r") as auth_data:
+        auth = json.load(auth_data)
+
+    oauth2_token = requests.post(OAUTH_ENDPOINT, data=auth).json()['access_token']
+
+    logging.info("Requesting recall data...")
+    res = requests.get(RECALL_ENDPOINT, headers={
+        'Subscription-Id': 'test',
+        'Authorization': 'Bearer ' + oauth2_token
+    }).json()
+
+    print(res)
+
+    # set test notification content
+    notification = messaging.Notification(
+        title=res['items'][0]['mfgCampaignNumber'],
+        body=res['items'][0]['notes']
+    )
+
+    logging.info("Sending messages...")
 
     # iterate over users in users collection
     for document in collection.stream():
