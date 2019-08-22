@@ -56,6 +56,9 @@ def send_messages(android_config, collection):
         # get user's push token and build message object
         push_token = user['pushToken']
 
+        if 'vehicles' not in user:
+            continue
+
         for vehicle in user['vehicles']:
             logging.info("Requesting recall data...")
             res = requests.get(RECALL_ENDPOINT + "?vin=" + vehicle['vin'], headers={
