@@ -47,38 +47,42 @@ def send_messages(android_config, collection):
 
     oauth2_token = requests.post(OAUTH_ENDPOINT, data=auth).json()['access_token']
 
-    logging.info("Requesting recall data...")
-    res = requests.get(RECALL_ENDPOINT, headers={
-        'Subscription-Id': 'test',
-        'Authorization': 'Bearer ' + oauth2_token
-    }).json()
-
-    print(res)
-
-    # set test notification content
-    notification = messaging.Notification(
-        title=res['items'][0]['mfgCampaignNumber'],
-        body=res['items'][0]['notes']
-    )
-
     logging.info("Sending messages...")
 
     # iterate over users in users collection
     for document in collection.stream():
-        # get user's push token and build message object
-        push_token = document.to_dict()['pushToken']
-        message = messaging.Message(
-            notification=notification,
-            android=android_config,
-            token=push_token
-        )
+        user = document.to_dict()
 
-        # send message and catch errors
-        try:
-            message_id = messaging.send(message)
-            sent_messages.append(message_id)
-        except ApiCallError:
-            print("ApiCallError for push token " + push_token)
+        # get user's push token and build message object
+        push_token = user['pushToken']
+
+        for vehicle in user['vehicles']:
+            logging.info("Requesting recall data...")
+            res = requests.get(RECALL_ENDPOINT + "?vin=" + vehicle['vin'], headers={
+                'Subscription-Id': 'test',
+                'Authorization': 'Bearer ' + oauth2_token
+            }).json()
+
+            for recall in res['items']:
+                # set test notification content
+                notification = messaging.Notification(
+                    title="Safety Recall Alert - " + vehicle['year'] + " " + vehicle['make'] + " " + vehicle['model'],
+                    body=recall['componentDescription']
+                )
+
+                # construct message
+                message = messaging.Message(
+                    notification=notification,
+                    android=android_config,
+                    token=push_token
+                )
+
+                # send message and catch errors
+                try:
+                    message_id = messaging.send(message)
+                    sent_messages.append(message_id)
+                except ApiCallError:
+                    print("ApiCallError for push token " + push_token)
 
     logging.info(f"  Sent {len(sent_messages)} messages")
 
