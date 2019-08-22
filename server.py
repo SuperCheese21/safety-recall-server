@@ -50,8 +50,8 @@ def send_messages(android_config, collection):
     logging.info("Sending messages...")
 
     # iterate over users in users collection
-    for document in collection.stream():
-        user = document.to_dict()
+    for user_document in collection.stream():
+        user = user_document.to_dict()
 
         # get user's push token and build message object
         push_token = user['pushToken']
