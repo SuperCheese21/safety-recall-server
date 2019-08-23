@@ -61,7 +61,7 @@ def send_messages(android_config, collection):
 
         for vehicle in user['vehicles']:
             logging.info("Requesting recall data...")
-            res = requests.get(RECALL_ENDPOINT + "?vin=" + vehicle['vin'], headers={
+            res = requests.get(RECALL_ENDPOINT + "?vin=" + vehicle['carVIN'], headers={
                 'Subscription-Id': 'test',
                 'Authorization': 'Bearer ' + oauth2_token
             }).json()
